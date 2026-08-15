@@ -1,0 +1,19 @@
+{
+  "name": "review-tool-backend",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "get-refresh-token": "node scripts/get-refresh-token.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^140.0.0",
+    "nodemailer": "^9.0.5",
+    "resend": "^3.5.0"
+  }
+}
