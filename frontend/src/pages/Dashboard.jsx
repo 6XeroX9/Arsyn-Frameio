@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect.jsx";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8787/api";
@@ -12,6 +12,8 @@ function extractDriveFileId(input) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -37,29 +39,40 @@ export default function Dashboard() {
   const [confirmDelete, setConfirmDelete] = useState(null); // { type, id, name }
 
   useEffect(() => {
-    loadClients();
-    loadProjects();
-    loadActivity();
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then((r) => r.json())
+      .then(({ authenticated }) => {
+        if (!authenticated) return navigate("/login");
+        setAuthChecked(true);
+        loadClients();
+        loadProjects();
+        loadActivity();
+      });
   }, []);
 
   useEffect(() => {
     setShowAddVideo(false);
     if (!selectedId) return setDetail(null);
-    fetch(`${API}/projects/${selectedId}`)
+    fetch(`${API}/projects/${selectedId}`, { credentials: "include" })
       .then((r) => r.json())
       .then(setDetail);
   }, [selectedId]);
 
   function loadClients() {
-    fetch(`${API}/clients`).then((r) => r.json()).then(setClients);
+    fetch(`${API}/clients`, { credentials: "include" }).then((r) => r.json()).then(setClients);
   }
 
   function loadProjects() {
-    fetch(`${API}/projects`).then((r) => r.json()).then(setProjects);
+    fetch(`${API}/projects`, { credentials: "include" }).then((r) => r.json()).then(setProjects);
   }
 
   function loadActivity() {
-    fetch(`${API}/activity`).then((r) => r.json()).then(setActivity);
+    fetch(`${API}/activity`, { credentials: "include" }).then((r) => r.json()).then(setActivity);
+  }
+
+  async function logout() {
+    await fetch(`${API}/auth/logout`, { method: "POST", credentials: "include" });
+    navigate("/login");
   }
 
   async function createClient(e) {
@@ -67,6 +80,7 @@ export default function Dashboard() {
     if (!clientName.trim()) return;
     await fetch(`${API}/clients`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: clientName, email: clientEmail || null }),
     });
@@ -81,6 +95,7 @@ export default function Dashboard() {
     if (!projectClientId || !projectName.trim()) return;
     await fetch(`${API}/projects`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client_id: projectClientId, name: projectName }),
     });
@@ -94,6 +109,7 @@ export default function Dashboard() {
     if (!selectedId || !videoTitle.trim() || !videoFileId.trim()) return;
     await fetch(`${API}/videos`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         project_id: selectedId,
@@ -106,7 +122,7 @@ export default function Dashboard() {
     setVideoFileId("");
     setVideoVersion((v) => Number(v) + 1);
     setShowAddVideo(false);
-    fetch(`${API}/projects/${selectedId}`).then((r) => r.json()).then(setDetail);
+    fetch(`${API}/projects/${selectedId}`, { credentials: "include" }).then((r) => r.json()).then(setDetail);
     loadProjects();
   }
 
@@ -114,7 +130,7 @@ export default function Dashboard() {
     if (!confirmDelete) return;
     const { type, id } = confirmDelete;
     const path = type === "client" ? "clients" : type === "project" ? "projects" : "videos";
-    await fetch(`${API}/${path}/${id}`, { method: "DELETE" });
+    await fetch(`${API}/${path}/${id}`, { method: "DELETE", credentials: "include" });
     setConfirmDelete(null);
 
     if (type === "client") loadClients();
@@ -125,7 +141,7 @@ export default function Dashboard() {
       loadProjects();
     }
     if (type === "video") {
-      fetch(`${API}/projects/${selectedId}`).then((r) => r.json()).then(setDetail);
+      fetch(`${API}/projects/${selectedId}`, { credentials: "include" }).then((r) => r.json()).then(setDetail);
       loadProjects();
     }
   }
@@ -136,6 +152,8 @@ export default function Dashboard() {
     setCopiedId(project.id);
     setTimeout(() => setCopiedId(null), 1500);
   }
+
+  if (!authChecked) return null;
 
   return (
     <div className="page">
@@ -151,6 +169,9 @@ export default function Dashboard() {
           </button>
           <button type="submit" onClick={() => setShowProjectModal(true)}>
             + New project
+          </button>
+          <button className="btn-ghost" onClick={logout}>
+            Log out
           </button>
         </div>
       </div>

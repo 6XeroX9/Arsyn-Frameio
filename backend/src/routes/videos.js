@@ -2,6 +2,7 @@ import { Router } from "express";
 import { supabase } from "../db/supabaseClient.js";
 import { streamFile } from "../drive/driveClient.js";
 import { notifyReviewComplete } from "../notify.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 export const videosRouter = Router();
 
@@ -60,7 +61,7 @@ videosRouter.patch("/videos/:id/status", async (req, res) => {
 
 // POST /api/videos — add a new version under an existing project
 // (pass parent_video_id to chain it to the version it's replacing)
-videosRouter.post("/videos", async (req, res) => {
+videosRouter.post("/videos", requireAuth, async (req, res) => {
   const { project_id, parent_video_id, title, drive_file_id, version_number } = req.body;
   const { data, error } = await supabase
     .from("videos")
@@ -73,7 +74,7 @@ videosRouter.post("/videos", async (req, res) => {
 });
 
 // DELETE /api/videos/:id — cascades to its comments
-videosRouter.delete("/videos/:id", async (req, res) => {
+videosRouter.delete("/videos/:id", requireAuth, async (req, res) => {
   const { error } = await supabase.from("videos").delete().eq("id", req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).end();

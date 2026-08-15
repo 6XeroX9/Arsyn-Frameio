@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { supabase } from "../db/supabaseClient.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 export const clientsRouter = Router();
 
 // GET /api/clients — dashboard list
-clientsRouter.get("/clients", async (_req, res) => {
+clientsRouter.get("/clients", requireAuth, async (_req, res) => {
   const { data, error } = await supabase
     .from("clients")
     .select("*")
@@ -15,7 +16,7 @@ clientsRouter.get("/clients", async (_req, res) => {
 });
 
 // POST /api/clients — dashboard "add client" form
-clientsRouter.post("/clients", async (req, res) => {
+clientsRouter.post("/clients", requireAuth, async (req, res) => {
   const { name, email } = req.body;
   const { data, error } = await supabase
     .from("clients")
@@ -28,7 +29,7 @@ clientsRouter.post("/clients", async (req, res) => {
 });
 
 // DELETE /api/clients/:id — cascades to their projects, videos, and comments
-clientsRouter.delete("/clients/:id", async (req, res) => {
+clientsRouter.delete("/clients/:id", requireAuth, async (req, res) => {
   const { error } = await supabase.from("clients").delete().eq("id", req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).end();

@@ -2,12 +2,13 @@ import { Router } from "express";
 import { Resend } from "resend";
 import "dotenv/config";
 import { supabase } from "../db/supabaseClient.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 export const commentsRouter = Router();
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // GET /api/activity — recent comments across all projects, for the dashboard feed
-commentsRouter.get("/activity", async (_req, res) => {
+commentsRouter.get("/activity", requireAuth, async (_req, res) => {
   const { data, error } = await supabase
     .from("comments")
     .select("id, author_name, author_type, body, priority, created_at, video:videos(title, project:projects(name))")

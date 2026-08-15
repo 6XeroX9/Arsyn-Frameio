@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { supabase } from "../db/supabaseClient.js";
 import { requireProjectToken } from "../middleware/auth.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 export const projectsRouter = Router();
 
 // GET /api/projects — dashboard list, joined with client name + video count
-projectsRouter.get("/projects", async (_req, res) => {
+projectsRouter.get("/projects", requireAuth, async (_req, res) => {
   const { data, error } = await supabase
     .from("projects")
     .select("*, client:clients(id, name), videos(id, status)")
@@ -16,7 +17,7 @@ projectsRouter.get("/projects", async (_req, res) => {
 });
 
 // GET /api/projects/:id — dashboard detail view (by id, not access token)
-projectsRouter.get("/projects/:id", async (req, res) => {
+projectsRouter.get("/projects/:id", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("projects")
     .select("*, client:clients(id, name), videos(*)")
@@ -28,7 +29,7 @@ projectsRouter.get("/projects/:id", async (req, res) => {
 });
 
 // POST /api/projects — dashboard "add project" form
-projectsRouter.post("/projects", async (req, res) => {
+projectsRouter.post("/projects", requireAuth, async (req, res) => {
   const { client_id, name } = req.body;
   const { data, error } = await supabase
     .from("projects")
@@ -41,7 +42,7 @@ projectsRouter.post("/projects", async (req, res) => {
 });
 
 // DELETE /api/projects/:id — cascades to its videos and comments
-projectsRouter.delete("/projects/:id", async (req, res) => {
+projectsRouter.delete("/projects/:id", requireAuth, async (req, res) => {
   const { error } = await supabase.from("projects").delete().eq("id", req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).end();
