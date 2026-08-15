@@ -8,11 +8,15 @@ async function notifyTelegram(text) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text }),
-  }).catch(() => {});
+  }).catch((err) => {
+    console.error("[notify] Telegram send failed:", err.message);
+    return null;
+  });
+  if (res && !res.ok) console.error("[notify] Telegram API error:", res.status, await res.text());
 }
 
 // Gmail via an App Password (myaccount.google.com/apppasswords) — no
@@ -36,7 +40,7 @@ async function notifyEmail(subject, text) {
   if (!t || !to) return;
   await t
     .sendMail({ from: `"Review Tool" <${process.env.GMAIL_USER}>`, to, subject, text })
-    .catch(() => {});
+    .catch((err) => console.error("[notify] Gmail send failed:", err.message));
 }
 
 export async function notifyReviewComplete({ projectName, clientName, videoTitle, versionNumber, commentCount }) {

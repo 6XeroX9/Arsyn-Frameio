@@ -15,13 +15,13 @@ videosRouter.post("/videos/:id/review-complete", async (req, res) => {
 
   if (error || !video) return res.status(404).json({ error: "Video not found" });
 
-  notifyReviewComplete({
+  await notifyReviewComplete({
     projectName: video.project.name,
     clientName: video.project.client?.name ?? "Unknown client",
     videoTitle: video.title,
     versionNumber: video.version_number,
     commentCount: video.comments.length,
-  }).catch(() => {});
+  });
 
   res.json({ ok: true });
 });
