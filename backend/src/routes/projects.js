@@ -40,6 +40,13 @@ projectsRouter.post("/projects", async (req, res) => {
   res.status(201).json(data);
 });
 
+// DELETE /api/projects/:id — cascades to its videos and comments
+projectsRouter.delete("/projects/:id", async (req, res) => {
+  const { error } = await supabase.from("projects").delete().eq("id", req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(204).end();
+});
+
 // GET /api/review/:token — everything the client-facing page needs in one call
 projectsRouter.get("/review/:token", requireProjectToken, async (req, res) => {
   const { data: videos, error } = await supabase

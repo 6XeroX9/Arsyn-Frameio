@@ -26,3 +26,10 @@ clientsRouter.post("/clients", async (req, res) => {
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 });
+
+// DELETE /api/clients/:id — cascades to their projects, videos, and comments
+clientsRouter.delete("/clients/:id", async (req, res) => {
+  const { error } = await supabase.from("clients").delete().eq("id", req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(204).end();
+});

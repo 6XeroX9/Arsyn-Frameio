@@ -34,6 +34,7 @@ export default function Dashboard() {
 
   const [copiedId, setCopiedId] = useState(null);
   const [activity, setActivity] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { type, id, name }
 
   useEffect(() => {
     loadClients();
@@ -109,6 +110,26 @@ export default function Dashboard() {
     loadProjects();
   }
 
+  async function performDelete() {
+    if (!confirmDelete) return;
+    const { type, id } = confirmDelete;
+    const path = type === "client" ? "clients" : type === "project" ? "projects" : "videos";
+    await fetch(`${API}/${path}/${id}`, { method: "DELETE" });
+    setConfirmDelete(null);
+
+    if (type === "client") loadClients();
+    if (type === "project" || type === "client") {
+      if (selectedId === id || (type === "client" && detail?.client?.id === id)) {
+        setSelectedId(null);
+      }
+      loadProjects();
+    }
+    if (type === "video") {
+      fetch(`${API}/projects/${selectedId}`).then((r) => r.json()).then(setDetail);
+      loadProjects();
+    }
+  }
+
   function copyLink(project) {
     const url = `${window.location.origin}/review/${project.access_token}`;
     navigator.clipboard.writeText(url).catch(() => {});
@@ -140,9 +161,27 @@ export default function Dashboard() {
             <h3>Clients</h3>
             <ul style={{ marginTop: 10 }}>
               {clients.map((c) => (
-                <li key={c.id} style={{ padding: "6px 0", borderTop: "1px solid var(--border)" }}>
-                  {c.name}
-                  {c.email && <div style={{ color: "var(--text-faint)", fontSize: 12 }}>{c.email}</div>}
+                <li
+                  key={c.id}
+                  style={{
+                    padding: "6px 0",
+                    borderTop: "1px solid var(--border)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div>
+                    {c.name}
+                    {c.email && <div style={{ color: "var(--text-faint)", fontSize: 12 }}>{c.email}</div>}
+                  </div>
+                  <button
+                    className="btn-ghost btn-icon"
+                    title="Delete client"
+                    onClick={() => setConfirmDelete({ type: "client", id: c.id, name: c.name })}
+                  >
+                    ✕
+                  </button>
                 </li>
               ))}
               {clients.length === 0 && <li className="empty">No clients yet</li>}
@@ -160,6 +199,16 @@ export default function Dashboard() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <strong>{p.name}</strong>
+                    <button
+                      className="btn-ghost btn-icon"
+                      title="Delete project"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({ type: "project", id: p.id, name: p.name });
+                      }}
+                    >
+                      ✕
+                    </button>
                   </div>
                   <div className="meta">
                     {p.client?.name ?? "no client"} · {p.videos?.length ?? 0} version(s)
@@ -195,10 +244,28 @@ export default function Dashboard() {
                 <h4 style={{ marginTop: 0 }}>Video versions</h4>
                 <ul>
                   {detail.videos.map((v) => (
-                    <li key={v.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
-                      <span style={{ color: "var(--text-faint)", fontSize: 12 }}>v{v.version_number}</span>{" "}
-                      {v.title}{" "}
-                      <span className={`badge badge-${v.status}`}>{v.status.replace("_", " ")}</span>
+                    <li
+                      key={v.id}
+                      style={{
+                        padding: "8px 0",
+                        borderTop: "1px solid var(--border)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span>
+                        <span style={{ color: "var(--text-faint)", fontSize: 12 }}>v{v.version_number}</span>{" "}
+                        {v.title}{" "}
+                        <span className={`badge badge-${v.status}`}>{v.status.replace("_", " ")}</span>
+                      </span>
+                      <button
+                        className="btn-ghost btn-icon"
+                        title="Delete video"
+                        onClick={() => setConfirmDelete({ type: "video", id: v.id, name: v.title })}
+                      >
+                        ✕
+                      </button>
                     </li>
                   ))}
                   {detail.videos.length === 0 && <li className="empty">No videos yet</li>}
@@ -301,6 +368,33 @@ export default function Dashboard() {
             <input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Project name" />
             <button type="submit">Add project</button>
           </form>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete {confirmDelete.type}?</h3>
+            <p style={{ margin: "4px 0 16px" }}>
+              {confirmDelete.type === "client" &&
+                `This permanently deletes "${confirmDelete.name}" and all of their projects, videos, and comments.`}
+              {confirmDelete.type === "project" &&
+                `This permanently deletes "${confirmDelete.name}" and all its videos and comments.`}
+              {confirmDelete.type === "video" &&
+                `This permanently deletes "${confirmDelete.name}" and all its comments.`}
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmDelete(null)}>
+                Cancel
+              </button>
+              <button
+                style={{ flex: 1, background: "var(--danger)", borderColor: "var(--danger)", color: "#1a0a0a" }}
+                onClick={performDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
