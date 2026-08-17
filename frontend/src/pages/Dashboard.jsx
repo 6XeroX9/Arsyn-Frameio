@@ -37,6 +37,16 @@ export default function Dashboard() {
   const [copiedId, setCopiedId] = useState(null);
   const [activity, setActivity] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(null); // { type, id, name }
+  const [expandedVideoId, setExpandedVideoId] = useState(null);
+  const [replyFor, setReplyFor] = useState(null); // comment id
+  const [replyDraft, setReplyDraft] = useState("");
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/auth/me`, { credentials: "include" })
@@ -52,6 +62,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     setShowAddVideo(false);
+    setExpandedVideoId(null);
+    setReplyFor(null);
     if (!selectedId) return setDetail(null);
     fetch(`${API}/projects/${selectedId}`, { credentials: "include" })
       .then((r) => r.json())
@@ -68,6 +80,34 @@ export default function Dashboard() {
 
   function loadActivity() {
     fetch(`${API}/activity`, { credentials: "include" }).then((r) => r.json()).then(setActivity);
+  }
+
+  async function changePassword(e) {
+    e.preventDefault();
+    setPasswordError("");
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords don't match");
+      return;
+    }
+    const res = await fetch(`${API}/auth/change-password`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json();
+      setPasswordError(error || "Failed to change password");
+      return;
+    }
+    setPasswordSuccess(true);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setTimeout(() => {
+      setShowPasswordModal(false);
+      setPasswordSuccess(false);
+    }, 1500);
   }
 
   async function logout() {
@@ -146,6 +186,25 @@ export default function Dashboard() {
     }
   }
 
+  async function submitDashboardReply(video, parentComment) {
+    if (!replyDraft.trim()) return;
+    await fetch(`${API}/videos/${video.id}/comments`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        author_name: "Editor",
+        author_type: "editor",
+        timestamp_seconds: parentComment.timestamp_seconds,
+        parent_comment_id: parentComment.id,
+        body: replyDraft,
+      }),
+    });
+    setReplyDraft("");
+    setReplyFor(null);
+    fetch(`${API}/projects/${selectedId}`, { credentials: "include" }).then((r) => r.json()).then(setDetail);
+  }
+
   function copyLink(project) {
     const url = `${window.location.origin}/review/${project.access_token}`;
     navigator.clipboard.writeText(url).catch(() => {});
@@ -169,6 +228,9 @@ export default function Dashboard() {
           </button>
           <button type="submit" onClick={() => setShowProjectModal(true)}>
             + New project
+          </button>
+          <button className="btn-ghost" onClick={() => setShowPasswordModal(true)}>
+            Change password
           </button>
           <button className="btn-ghost" onClick={logout}>
             Log out
@@ -264,31 +326,90 @@ export default function Dashboard() {
 
                 <h4 style={{ marginTop: 0 }}>Video versions</h4>
                 <ul>
-                  {detail.videos.map((v) => (
-                    <li
-                      key={v.id}
-                      style={{
-                        padding: "8px 0",
-                        borderTop: "1px solid var(--border)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span>
-                        <span style={{ color: "var(--text-faint)", fontSize: 12 }}>v{v.version_number}</span>{" "}
-                        {v.title}{" "}
-                        <span className={`badge badge-${v.status}`}>{v.status.replace("_", " ")}</span>
-                      </span>
-                      <button
-                        className="btn-ghost btn-icon"
-                        title="Delete video"
-                        onClick={() => setConfirmDelete({ type: "video", id: v.id, name: v.title })}
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
+                  {detail.videos.map((v) => {
+                    const topLevel = (v.comments ?? [])
+                      .filter((c) => !c.parent_comment_id)
+                      .sort((a, b) => a.timestamp_seconds - b.timestamp_seconds);
+                    const repliesFor = (id) =>
+                      (v.comments ?? [])
+                        .filter((c) => c.parent_comment_id === id)
+                        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    const expanded = expandedVideoId === v.id;
+
+                    return (
+                      <li key={v.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span>
+                            <span style={{ color: "var(--text-faint)", fontSize: 12 }}>v{v.version_number}</span>{" "}
+                            {v.title}{" "}
+                            <span className={`badge badge-${v.status}`}>{v.status.replace("_", " ")}</span>
+                          </span>
+                          <span style={{ display: "flex", gap: 4 }}>
+                            <button
+                              className="btn-ghost btn-icon"
+                              onClick={() => setExpandedVideoId(expanded ? null : v.id)}
+                            >
+                              💬 {topLevel.length}
+                            </button>
+                            <button
+                              className="btn-ghost btn-icon"
+                              title="Delete video"
+                              onClick={() => setConfirmDelete({ type: "video", id: v.id, name: v.title })}
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        </div>
+
+                        {expanded && (
+                          <div style={{ marginTop: 8 }}>
+                            {topLevel.map((c) => (
+                              <div key={c.id} className={`comment-row ${c.resolved ? "resolved" : ""}`}>
+                                <div className="comment-meta">
+                                  <span className="comment-time">{formatTime(c.timestamp_seconds)}</span>
+                                  {c.priority && <span className="badge badge-changes_requested">!</span>}
+                                  <strong className="comment-author">{c.author_name}</strong>
+                                </div>
+                                <div className="comment-text">{c.body}</div>
+
+                                {repliesFor(c.id).map((r) => (
+                                  <div key={r.id} className="reply-row">
+                                    <strong>{r.author_name}:</strong> {r.body}
+                                  </div>
+                                ))}
+
+                                {replyFor === c.id ? (
+                                  <div className="reply-composer">
+                                    <input
+                                      autoFocus
+                                      value={replyDraft}
+                                      onChange={(e) => setReplyDraft(e.target.value)}
+                                      placeholder="Reply as editor…"
+                                      onKeyDown={(e) => e.key === "Enter" && submitDashboardReply(v, c)}
+                                    />
+                                    <button type="submit" onClick={() => submitDashboardReply(v, c)}>
+                                      Send
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className="btn-ghost btn-icon reply-toggle"
+                                    onClick={() => {
+                                      setReplyFor(c.id);
+                                      setReplyDraft("");
+                                    }}
+                                  >
+                                    Reply{repliesFor(c.id).length > 0 ? ` (${repliesFor(c.id).length})` : ""}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {topLevel.length === 0 && <p className="empty" style={{ margin: 0 }}>No comments yet</p>}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                   {detail.videos.length === 0 && <li className="empty">No videos yet</li>}
                 </ul>
 
@@ -392,6 +513,48 @@ export default function Dashboard() {
         </div>
       )}
 
+      {showPasswordModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowPasswordModal(false);
+            setPasswordError("");
+          }}
+        >
+          <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={changePassword}>
+            <h3>Change password</h3>
+            {passwordSuccess ? (
+              <p style={{ color: "var(--success)", margin: "12px 0 0" }}>Password changed ✓</p>
+            ) : (
+              <>
+                <input
+                  autoFocus
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Current password"
+                  style={{ marginTop: 12 }}
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (min 8 characters)"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                />
+                {passwordError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{passwordError}</p>}
+                <button type="submit">Change password</button>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -420,6 +583,12 @@ export default function Dashboard() {
       )}
     </div>
   );
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2, "0");
+  return `${m}:${sec}`;
 }
 
 function timeAgo(iso) {

@@ -20,7 +20,7 @@ projectsRouter.get("/projects", requireAuth, async (_req, res) => {
 projectsRouter.get("/projects/:id", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("projects")
-    .select("*, client:clients(id, name), videos(*)")
+    .select("*, client:clients(id, name), videos(*, comments(*))")
     .eq("id", req.params.id)
     .single();
 

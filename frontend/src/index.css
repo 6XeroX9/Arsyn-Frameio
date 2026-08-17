@@ -389,6 +389,23 @@ button[type="submit"]:hover {
   color: var(--danger);
 }
 
+.btn-changes {
+  background: rgba(255, 61, 90, 0.12);
+  border: 1px solid rgba(255, 61, 90, 0.4);
+  color: var(--danger);
+  font-weight: 700;
+}
+.btn-changes:hover {
+  background: rgba(255, 61, 90, 0.22);
+  border-color: var(--danger);
+}
+.btn-changes:disabled {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #1a0a0a;
+  opacity: 1;
+}
+
 .btn-notify {
   background: rgba(255, 122, 61, 0.16);
   border: 1px solid var(--accent-2);

@@ -54,6 +54,16 @@ create table comments (
 create index idx_videos_project on videos(project_id);
 create index idx_comments_video on comments(video_id);
 
+-- Single-row table for the dashboard's admin login, so the password can
+-- actually be rotated at runtime instead of living in an env var.
+create table admin_credentials (
+  id int primary key default 1,
+  username text not null,
+  password_hash text not null,
+  updated_at timestamptz not null default now(),
+  constraint single_row check (id = 1)
+);
+
 -- Handy view: latest version of every video per project
 create view latest_videos as
 select distinct on (project_id) *

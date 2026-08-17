@@ -9,6 +9,7 @@ import { videosRouter } from "./routes/videos.js";
 import { commentsRouter } from "./routes/comments.js";
 
 const app = express();
+app.set("trust proxy", 1); // Render/Vercel sit behind a proxy — needed for correct client IPs (rate limiting)
 
 // Allow the deployed frontend (and local dev) to send/receive the auth cookie.
 const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:5173", "http://localhost:5174"].filter(Boolean);

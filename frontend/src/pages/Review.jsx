@@ -175,13 +175,13 @@ export default function Review() {
     );
   }
 
-  async function approve() {
+  async function setStatus(status) {
     await fetch(`${API}/videos/${activeId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "approved" }),
+      body: JSON.stringify({ status }),
     });
-    setVideos((vs) => vs.map((v) => (v.id === activeId ? { ...v, status: "approved" } : v)));
+    setVideos((vs) => vs.map((v) => (v.id === activeId ? { ...v, status } : v)));
   }
 
   function exportShotList() {
@@ -297,8 +297,15 @@ export default function Review() {
           />
 
           <div className="toolbar">
-            <button type="submit" onClick={approve} disabled={active.status === "approved"}>
+            <button type="submit" onClick={() => setStatus("approved")} disabled={active.status === "approved"}>
               {active.status === "approved" ? "Approved ✓" : "Approve this cut"}
+            </button>
+            <button
+              className="btn-changes"
+              onClick={() => setStatus("changes_requested")}
+              disabled={active.status === "changes_requested"}
+            >
+              {active.status === "changes_requested" ? "Changes requested ✓" : "Request changes"}
             </button>
             <button
               className="btn-notify"
