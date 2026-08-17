@@ -586,7 +586,7 @@ button[type="submit"]:hover {
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow), 0 0 0 1px var(--border);
-  height: min(58vh, 520px);
+  max-height: min(58vh, 520px);
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
@@ -598,7 +598,7 @@ button[type="submit"]:hover {
 .video-shell video {
   display: block;
   max-width: 100%;
-  max-height: 100%;
+  max-height: min(58vh, 520px);
   width: auto;
   height: auto;
 }
