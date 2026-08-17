@@ -324,6 +324,39 @@ export default function Dashboard() {
                   </button>
                 </div>
 
+                {(() => {
+                  const byReviewer = {};
+                  for (const v of detail.videos) {
+                    for (const c of v.comments ?? []) {
+                      if (c.author_type !== "client") continue;
+                      const r = (byReviewer[c.author_name] ??= { count: 0, last: c.created_at });
+                      r.count += 1;
+                      if (c.created_at > r.last) r.last = c.created_at;
+                    }
+                  }
+                  const reviewers = Object.entries(byReviewer).sort((a, b) => (a[1].last < b[1].last ? 1 : -1));
+                  if (reviewers.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <h4 style={{ marginTop: 0 }}>Reviewers</h4>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {reviewers.map(([name, r]) => (
+                          <span
+                            key={name}
+                            className="card"
+                            style={{ padding: "6px 12px", display: "flex", alignItems: "baseline", gap: 6 }}
+                          >
+                            <strong>{name}</strong>
+                            <span style={{ color: "var(--text-faint)", fontSize: 12 }}>
+                              {r.count} comment{r.count !== 1 ? "s" : ""} · {timeAgo(r.last)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <h4 style={{ marginTop: 0 }}>Video versions</h4>
                 <ul>
                   {detail.videos.map((v) => {
