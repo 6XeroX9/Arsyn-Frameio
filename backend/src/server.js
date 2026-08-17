@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import compression from "compression";
 import "dotenv/config";
 import { authRouter } from "./routes/auth.js";
 import { clientsRouter } from "./routes/clients.js";
@@ -20,6 +21,9 @@ app.use(
   })
 );
 
+// Compress JSON API responses, but never the video proxy — it's already
+// compressed media, and touching it risks breaking Range-request byte serving.
+app.use(compression({ filter: (req, res) => (req.path.includes("/stream") ? false : compression.filter(req, res)) }));
 app.use(express.json());
 app.use(cookieParser());
 
